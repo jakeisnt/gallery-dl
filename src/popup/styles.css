@@ -35,11 +35,21 @@ header h1 { font-size: 16px; }
 }
 
 .success {
+  display: block;
+  width: 100%;
   background: #efe;
   color: #060;
   padding: 8px;
   border-radius: 4px;
   margin-bottom: 12px;
+  border: 1px solid #cec;
+  cursor: pointer;
+  text-align: left;
+  font-size: 14px;
+}
+
+.success:hover {
+  background: #dfd;
 }
 
 .loading {
@@ -79,6 +89,12 @@ header h1 { font-size: 16px; }
   border: none;
   border-radius: 4px;
   cursor: pointer;
+  min-width: 70px;
+}
+
+.search button:disabled {
+  opacity: 0.7;
+  cursor: wait;
 }
 
 .channels {
@@ -105,4 +121,23 @@ header h1 { font-size: 16px; }
   text-align: center;
   color: #888;
   padding: 16px;
+}
+
+.visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+/* Focus states for accessibility */
+button:focus-visible,
+input:focus-visible {
+  outline: 2px solid #000;
+  outline-offset: 2px;
 }

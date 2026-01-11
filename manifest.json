@@ -3,6 +3,11 @@
   "name": "Instagram to Are.na",
   "version": "1.0.0",
   "description": "Connect Instagram images to your Are.na channels",
+  "author": "Instagram to Are.na Contributors",
+  "minimum_chrome_version": "110",
+  "content_security_policy": {
+    "extension_pages": "script-src 'self'; object-src 'self'"
+  },
   "permissions": [
     "storage",
     "activeTab",

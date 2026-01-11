@@ -58,19 +58,41 @@ async function getImageUrl(tabId?: number): Promise<ImageUrlResponse> {
     return { success: false, error: 'No active tab' };
   }
 
-  const [result] = await chrome.scripting.executeScript({
-    target: { tabId },
-    func: () => {
-      // Find the main post image
-      const img = document.querySelector('article img[src*="instagram"]') as HTMLImageElement;
-      return img?.src || null;
-    },
-  });
+  try {
+    const [result] = await chrome.scripting.executeScript({
+      target: { tabId },
+      func: () => {
+        // Try multiple selectors for Instagram's changing DOM
+        const selectors = [
+          'article img[src*="instagram"]',
+          'article img[src*="cdninstagram"]',
+          'main article img',
+          '[role="presentation"] img',
+          'article video[poster]',
+        ];
 
-  if (result?.result) {
-    return { success: true, imageUrl: result.result };
+        for (const selector of selectors) {
+          const element = document.querySelector(selector);
+          if (element) {
+            if (element instanceof HTMLVideoElement) {
+              return element.poster || null;
+            }
+            if (element instanceof HTMLImageElement) {
+              return element.src || null;
+            }
+          }
+        }
+        return null;
+      },
+    });
+
+    if (result?.result) {
+      return { success: true, imageUrl: result.result };
+    }
+    return { success: false, error: 'No image found. Make sure you\'re on an Instagram post.' };
+  } catch {
+    return { success: false, error: 'Could not access page content. Try refreshing the page.' };
   }
-  return { success: false, error: 'No image found on page' };
 }
 
 async function getChannels(): Promise<ChannelsResponse> {
@@ -84,7 +106,7 @@ async function getChannels(): Promise<ChannelsResponse> {
 
 async function searchChannels(query: string): Promise<ChannelsResponse> {
   if (!arenaClient.isConfigured()) {
-    return { success: false, error: 'Are.na not configured' };
+    return { success: false, error: 'Are.na not configured. Add access token in settings.' };
   }
 
   const channels = await arenaClient.searchChannels(query);
@@ -93,11 +115,9 @@ async function searchChannels(query: string): Promise<ChannelsResponse> {
 
 async function connectImage(imageUrl: string, channelSlug: string): Promise<ConnectResponse> {
   if (!arenaClient.isConfigured()) {
-    return { success: false, error: 'Are.na not configured' };
+    return { success: false, error: 'Are.na not configured. Add access token in settings.' };
   }
 
-  const blockId = await arenaClient.connectImage(imageUrl, channelSlug);
-  return { success: true, blockId };
+  const block = await arenaClient.connectImage(imageUrl, channelSlug);
+  return { success: true, blockId: block.id, channelSlug: block.slug };
 }
-
-console.log('Instagram to Are.na background worker started');

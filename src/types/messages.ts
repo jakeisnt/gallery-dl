@@ -25,5 +25,6 @@ export interface ChannelsResponse {
 export interface ConnectResponse {
   success: boolean;
   blockId?: number;
+  channelSlug?: string;
   error?: string;
 }
