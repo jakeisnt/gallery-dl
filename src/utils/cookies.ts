@@ -87,3 +87,32 @@ export class AuthenticationError extends Error {
     this.name = 'AuthenticationError';
   }
 }
+
+/**
+ * Build a cookie header string from Instagram cookies
+ * This can be used for authenticated fetch requests
+ */
+export async function buildCookieHeader(): Promise<string> {
+  const cookies = await getInstagramCookies();
+  return cookies.map(c => `${c.name}=${c.value}`).join('; ');
+}
+
+/**
+ * Get specific Instagram cookie value by name
+ */
+export async function getInstagramCookie(name: string): Promise<string | undefined> {
+  const cookies = await getInstagramCookies();
+  return cookies.find(c => c.name === name)?.value;
+}
+
+/**
+ * Get all relevant Instagram auth cookies as an object
+ */
+export async function getInstagramCookiesMap(): Promise<Record<string, string>> {
+  const cookies = await getInstagramCookies();
+  const map: Record<string, string> = {};
+  for (const cookie of cookies) {
+    map[cookie.name] = cookie.value;
+  }
+  return map;
+}
