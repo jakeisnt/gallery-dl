@@ -1,6 +1,7 @@
 /**
  * Download Manager
  * Handles downloading media files using Chrome's Downloads API
+ * Supports authenticated downloads for Instagram CDN content
  */
 
 import type { ExtractedMedia } from '../types/instagram';
@@ -12,6 +13,11 @@ import {
 } from '../utils/filename';
 import { sleep } from '../utils/delay';
 import { addDownloadToHistory } from '../types/storage';
+import {
+  fetchMediaAsBlob,
+  revokeBlobUrl,
+  isInstagramCdnUrl,
+} from '../utils/authenticated-fetch';
 
 export interface DownloadResult {
   success: boolean;
@@ -40,6 +46,7 @@ export class DownloadManager {
 
   /**
    * Download a single media file
+   * Uses authenticated fetch for Instagram CDN URLs to include session cookies
    */
   async download(
     media: ExtractedMedia,
@@ -51,9 +58,20 @@ export class DownloadManager {
       ? `${opts.directory}/${filename}`
       : filename;
 
+    let blobUrl: string | null = null;
+
     try {
+      let downloadUrl = media.url;
+
+      // For Instagram CDN URLs, fetch with authentication and create blob URL
+      if (isInstagramCdnUrl(media.url)) {
+        const blobData = await fetchMediaAsBlob(media.url);
+        blobUrl = blobData.blobUrl;
+        downloadUrl = blobUrl;
+      }
+
       const downloadId = await chrome.downloads.download({
-        url: media.url,
+        url: downloadUrl,
         filename: fullPath,
         saveAs: false,
         conflictAction: opts.skipExisting ? 'uniquify' : 'overwrite',
@@ -61,6 +79,11 @@ export class DownloadManager {
 
       // Wait for download to complete
       await this.waitForDownload(downloadId);
+
+      // Revoke blob URL after download completes to free memory
+      if (blobUrl) {
+        revokeBlobUrl(blobUrl);
+      }
 
       // Record in history
       await addDownloadToHistory({
@@ -77,6 +100,11 @@ export class DownloadManager {
         filename: fullPath,
       };
     } catch (error) {
+      // Revoke blob URL on error to prevent memory leak
+      if (blobUrl) {
+        revokeBlobUrl(blobUrl);
+      }
+
       const errorMessage =
         error instanceof Error ? error.message : String(error);
 
