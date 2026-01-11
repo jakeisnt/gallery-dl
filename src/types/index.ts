@@ -5,3 +5,4 @@
 export * from './instagram';
 export * from './messages';
 export * from './storage';
+export * from './arena';
