@@ -11,7 +11,6 @@ pnpm install        # Install dependencies
 pnpm dev            # Development build with watch
 pnpm build          # Production build
 pnpm typecheck      # Type checking
-pnpm lint           # Linting
 
 # Testing
 pnpm test           # Run unit & component tests
@@ -21,6 +20,23 @@ pnpm test:e2e       # Run E2E tests (requires build)
 pnpm test:all       # Run all tests
 pnpm test:benchmark # Run performance benchmarks
 ```
+
+## Linting
+
+Run ESLint to check for code quality issues:
+
+```bash
+pnpm lint           # Check src/ for lint errors
+```
+
+To add linting to CI, add this step to `.github/workflows/ci.yml`:
+
+```yaml
+- name: Run linting
+  run: pnpm lint
+```
+
+The project uses ESLint with TypeScript support. Config is in `.eslintrc.json`.
 
 ## Architecture
 
