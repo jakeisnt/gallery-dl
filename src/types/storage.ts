@@ -4,12 +4,10 @@
 
 export interface ArenaSettings {
   accessToken: string;
-  defaultChannelSlug: string;
 }
 
 export const DEFAULT_ARENA_SETTINGS: ArenaSettings = {
   accessToken: '',
-  defaultChannelSlug: '',
 };
 
 export async function getArenaSettings(): Promise<ArenaSettings> {
