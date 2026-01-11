@@ -18,12 +18,12 @@ A TypeScript-based Chrome extension for downloading images and videos from Insta
 
 1. Install dependencies:
    ```bash
-   npm install
+   pnpm install
    ```
 
 2. Build the extension:
    ```bash
-   npm run build
+   pnpm build
    ```
 
 3. Load in Chrome:
@@ -35,7 +35,7 @@ A TypeScript-based Chrome extension for downloading images and videos from Insta
 ### Development with Watch Mode
 
 ```bash
-npm run dev
+pnpm dev
 ```
 
 This will automatically rebuild when files change.
