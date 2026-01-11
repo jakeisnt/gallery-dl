@@ -3,6 +3,8 @@
  */
 
 import type { DownloadOptions } from './messages';
+import type { ArenaSettings, ArenaUploadQueueItem } from './arena';
+import { DEFAULT_ARENA_SETTINGS } from './arena';
 
 // User preferences stored in chrome.storage.sync
 export interface UserPreferences {
@@ -20,6 +22,9 @@ export interface UserPreferences {
   // UI preferences
   showNotifications: boolean;
   autoClose: boolean;
+
+  // Are.na integration
+  arena: ArenaSettings;
 }
 
 // Default preferences
@@ -33,6 +38,7 @@ export const DEFAULT_PREFERENCES: UserPreferences = {
   maxDelayMs: 3000,
   showNotifications: true,
   autoClose: false,
+  arena: DEFAULT_ARENA_SETTINGS,
 };
 
 // Download history entry
@@ -59,6 +65,7 @@ export interface LocalStorageData {
   downloadStats: DownloadStats;
   cachedUserData: Record<string, CachedUser>;
   wwwClaim: string;
+  arenaUploadQueue: ArenaUploadQueueItem[];
 }
 
 // Cached user data
@@ -79,6 +86,7 @@ export const DEFAULT_LOCAL_STORAGE: LocalStorageData = {
   },
   cachedUserData: {},
   wwwClaim: '0',
+  arenaUploadQueue: [],
 };
 
 // Helper functions for storage operations
