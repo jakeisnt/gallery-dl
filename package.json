@@ -1,7 +1,7 @@
 {
-  "name": "instagram-downloader-extension",
+  "name": "instagram-to-arena",
   "version": "1.0.0",
-  "description": "Download images and videos from Instagram",
+  "description": "Connect Instagram images to Are.na channels",
   "private": true,
   "scripts": {
     "dev": "webpack --mode development --watch",

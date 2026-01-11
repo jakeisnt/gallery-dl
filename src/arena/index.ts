@@ -1,7 +1,5 @@
 /**
- * Are.na integration module
- * Re-exports all Arena-related functionality
+ * Are.na integration
  */
 
-export { GalleryArenaClient, arenaClient } from './arena-client';
-export * from '../types/arena';
+export { GalleryArenaClient, arenaClient, type ArenaChannel } from './arena-client';

@@ -1,292 +1,103 @@
 /**
  * Background Service Worker
- * Handles API requests, downloads, and message routing
  */
 
-import type {
-  ExtensionMessage,
-  AuthStatusResponse,
-  ExtractMediaResponse,
-  DownloadResponse,
-  DownloadProgressMessage,
-} from '../types/messages';
-import type { ExtractedMedia } from '../types/instagram';
-import { getInstagramAuth, isLoggedIn } from '../utils/cookies';
-import { createInstagramClient, InstagramClient } from '../api/instagram-client';
-import { extractAllMedia, canExtract } from '../extractors';
-import { DownloadManager } from '../download/manager';
-import { getPreferences, preferencesToDownloadOptions } from '../types/storage';
+import type { ExtensionMessage, ImageUrlResponse, ChannelsResponse, ConnectResponse } from '../types/messages';
+import { arenaClient } from '../arena';
+import { getArenaSettings } from '../types/storage';
 
-// Singleton instances
-let client: InstagramClient | null = null;
-let downloadManager: DownloadManager | null = null;
-
-/**
- * Initialize or get the Instagram client
- */
-async function getClient(): Promise<InstagramClient> {
-  if (!client) {
-    const auth = await getInstagramAuth();
-    client = await createInstagramClient(auth.csrfToken);
+// Initialize Are.na client on startup
+getArenaSettings().then(settings => {
+  if (settings.accessToken) {
+    arenaClient.initialize(settings.accessToken);
   }
-  return client;
-}
+});
 
-/**
- * Get or create download manager
- */
-async function getDownloadManager(): Promise<DownloadManager> {
-  if (!downloadManager) {
-    const prefs = await getPreferences();
-    downloadManager = new DownloadManager(preferencesToDownloadOptions(prefs));
+// Re-initialize when settings change
+chrome.storage.onChanged.addListener((changes) => {
+  if (changes.accessToken?.newValue) {
+    arenaClient.initialize(changes.accessToken.newValue);
   }
-  return downloadManager;
-}
+});
 
-/**
- * Handle messages from popup and content scripts
- */
 chrome.runtime.onMessage.addListener(
-  (
-    message: ExtensionMessage,
-    sender: chrome.runtime.MessageSender,
-    sendResponse: (response: unknown) => void
-  ) => {
-    handleMessage(message, sender, sendResponse);
-    return true; // Indicates async response
+  (message: ExtensionMessage, sender, sendResponse) => {
+    handleMessage(message, sender.tab?.id).then(sendResponse);
+    return true;
   }
 );
 
-/**
- * Route and handle incoming messages
- */
 async function handleMessage(
   message: ExtensionMessage,
-  sender: chrome.runtime.MessageSender,
-  sendResponse: (response: unknown) => void
-): Promise<void> {
+  tabId?: number
+): Promise<ImageUrlResponse | ChannelsResponse | ConnectResponse> {
   try {
     switch (message.type) {
-      case 'GET_AUTH_STATUS':
-        await handleGetAuthStatus(sendResponse);
-        break;
+      case 'GET_IMAGE_URL':
+        return await getImageUrl(tabId);
 
-      case 'EXTRACT_MEDIA':
-        await handleExtractMedia(message.url, sendResponse);
-        break;
+      case 'GET_CHANNELS':
+        return await getChannels();
 
-      case 'DOWNLOAD_MEDIA':
-        await handleDownloadMedia(message.media, sendResponse);
-        break;
+      case 'SEARCH_CHANNELS':
+        return await searchChannels(message.query);
 
-      case 'DOWNLOAD_BATCH':
-        await handleDownloadBatch(message.media, sender.tab?.id, sendResponse);
-        break;
+      case 'CONNECT_IMAGE':
+        return await connectImage(message.imageUrl, message.channelSlug);
 
       default:
-        sendResponse({ error: 'Unknown message type' });
+        return { success: false, error: 'Unknown message type' };
     }
   } catch (error) {
-    console.error('Background message handler error:', error);
-    sendResponse({
-      success: false,
-      error: error instanceof Error ? error.message : String(error),
-    });
+    return { success: false, error: error instanceof Error ? error.message : String(error) };
   }
 }
 
-/**
- * Handle auth status check
- */
-async function handleGetAuthStatus(
-  sendResponse: (response: AuthStatusResponse) => void
-): Promise<void> {
-  try {
-    const loggedIn = await isLoggedIn();
-
-    if (loggedIn) {
-      const auth = await getInstagramAuth();
-      sendResponse({
-        isLoggedIn: true,
-        userId: auth.userId,
-      });
-    } else {
-      sendResponse({ isLoggedIn: false });
-    }
-  } catch {
-    sendResponse({ isLoggedIn: false });
+async function getImageUrl(tabId?: number): Promise<ImageUrlResponse> {
+  if (!tabId) {
+    return { success: false, error: 'No active tab' };
   }
+
+  const [result] = await chrome.scripting.executeScript({
+    target: { tabId },
+    func: () => {
+      // Find the main post image
+      const img = document.querySelector('article img[src*="instagram"]') as HTMLImageElement;
+      return img?.src || null;
+    },
+  });
+
+  if (result?.result) {
+    return { success: true, imageUrl: result.result };
+  }
+  return { success: false, error: 'No image found on page' };
 }
 
-/**
- * Handle media extraction request
- */
-async function handleExtractMedia(
-  url: string,
-  sendResponse: (response: ExtractMediaResponse) => void
-): Promise<void> {
-  if (!canExtract(url)) {
-    sendResponse({
-      success: false,
-      error: 'URL is not a valid Instagram URL',
-    });
-    return;
+async function getChannels(): Promise<ChannelsResponse> {
+  if (!arenaClient.isConfigured()) {
+    return { success: false, error: 'Are.na not configured. Add access token in settings.' };
   }
 
-  try {
-    const instagramClient = await getClient();
-    const prefs = await getPreferences();
-
-    const media = await extractAllMedia(url, instagramClient, {
-      includeVideos: prefs.includeVideos,
-      includeImages: prefs.includeImages,
-      filenameTemplate: prefs.filenameTemplate,
-    });
-
-    sendResponse({
-      success: true,
-      media,
-    });
-  } catch (error) {
-    // Reset client on auth errors to force re-auth
-    if (
-      error instanceof Error &&
-      (error.message.includes('authentication') ||
-        error.message.includes('login'))
-    ) {
-      client = null;
-    }
-
-    sendResponse({
-      success: false,
-      error: error instanceof Error ? error.message : String(error),
-    });
-  }
+  const channels = await arenaClient.getChannels();
+  return { success: true, channels };
 }
 
-/**
- * Handle single media download
- */
-async function handleDownloadMedia(
-  media: ExtractedMedia,
-  sendResponse: (response: DownloadResponse) => void
-): Promise<void> {
-  try {
-    const manager = await getDownloadManager();
-    const prefs = await getPreferences();
-
-    const result = await manager.download(media, {
-      directory: prefs.downloadDirectory,
-      filenameTemplate: prefs.filenameTemplate,
-    });
-
-    sendResponse({
-      success: result.success,
-      downloadId: result.downloadId,
-      error: result.error,
-    });
-
-    // Show notification if enabled
-    if (prefs.showNotifications && result.success) {
-      chrome.notifications.create({
-        type: 'basic',
-        iconUrl: 'icons/icon128.png',
-        title: 'Download Complete',
-        message: `Downloaded: ${result.filename}`,
-      });
-    }
-  } catch (error) {
-    sendResponse({
-      success: false,
-      error: error instanceof Error ? error.message : String(error),
-    });
+async function searchChannels(query: string): Promise<ChannelsResponse> {
+  if (!arenaClient.isConfigured()) {
+    return { success: false, error: 'Are.na not configured' };
   }
+
+  const channels = await arenaClient.searchChannels(query);
+  return { success: true, channels };
 }
 
-/**
- * Handle batch download
- */
-async function handleDownloadBatch(
-  media: ExtractedMedia[],
-  tabId: number | undefined,
-  sendResponse: (response: DownloadResponse) => void
-): Promise<void> {
-  try {
-    const manager = await getDownloadManager();
-    const prefs = await getPreferences();
-
-    const progress = await manager.downloadBatch(
-      media,
-      {
-        directory: prefs.downloadDirectory,
-        filenameTemplate: prefs.filenameTemplate,
-        includeVideos: prefs.includeVideos,
-        includeImages: prefs.includeImages,
-      },
-      (progressData) => {
-        // Send progress updates to popup if open
-        chrome.runtime.sendMessage({
-          type: 'DOWNLOAD_PROGRESS',
-          completed: progressData.completed,
-          total: progressData.total,
-          currentFile: progressData.currentFile,
-        } as DownloadProgressMessage).catch(() => {
-          // Popup might be closed, ignore
-        });
-      }
-    );
-
-    sendResponse({
-      success: progress.errors.length === 0,
-      error:
-        progress.errors.length > 0
-          ? `${progress.errors.length} download(s) failed`
-          : undefined,
-    });
-
-    // Show notification if enabled
-    if (prefs.showNotifications) {
-      const successCount = progress.completed;
-      const failCount = progress.errors.length;
-
-      chrome.notifications.create({
-        type: 'basic',
-        iconUrl: 'icons/icon128.png',
-        title: 'Batch Download Complete',
-        message: failCount > 0
-          ? `Downloaded ${successCount} files. ${failCount} failed.`
-          : `Downloaded ${successCount} files.`,
-      });
-    }
-  } catch (error) {
-    sendResponse({
-      success: false,
-      error: error instanceof Error ? error.message : String(error),
-    });
+async function connectImage(imageUrl: string, channelSlug: string): Promise<ConnectResponse> {
+  if (!arenaClient.isConfigured()) {
+    return { success: false, error: 'Are.na not configured' };
   }
+
+  const blockId = await arenaClient.connectImage(imageUrl, channelSlug);
+  return { success: true, blockId };
 }
 
-/**
- * Handle extension install/update
- */
-chrome.runtime.onInstalled.addListener((details) => {
-  if (details.reason === 'install') {
-    console.log('Instagram Downloader extension installed');
-  } else if (details.reason === 'update') {
-    console.log(`Instagram Downloader updated to version ${chrome.runtime.getManifest().version}`);
-  }
-});
-
-/**
- * Clear client cache when cookies change
- */
-chrome.cookies.onChanged.addListener((changeInfo) => {
-  if (
-    changeInfo.cookie.domain.includes('instagram.com') &&
-    changeInfo.cookie.name === 'sessionid'
-  ) {
-    client = null;
-  }
-});
-
-console.log('Instagram Downloader background worker started');
+console.log('Instagram to Are.na background worker started');
