@@ -1,8 +1,6 @@
 /**
- * Type definitions re-exports
+ * Type definitions
  */
 
-export * from './instagram';
 export * from './messages';
 export * from './storage';
-export * from './arena';

@@ -4,7 +4,6 @@ const CopyPlugin = require('copy-webpack-plugin');
 module.exports = {
   entry: {
     background: './src/background/index.ts',
-    content: './src/content/index.ts',
     popup: './src/popup/index.tsx',
     options: './src/options/index.tsx',
   },
@@ -20,9 +19,7 @@ module.exports = {
         use: {
           loader: 'ts-loader',
           options: {
-            compilerOptions: {
-              noEmit: false,
-            },
+            compilerOptions: { noEmit: false },
           },
         },
         exclude: /node_modules/,
@@ -44,8 +41,5 @@ module.exports = {
       ],
     }),
   ],
-  optimization: {
-    splitChunks: false,
-  },
   devtool: 'cheap-module-source-map',
 };
