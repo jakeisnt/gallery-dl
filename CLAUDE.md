@@ -18,7 +18,6 @@ pnpm test:watch     # Run tests in watch mode
 pnpm test:coverage  # Run tests with coverage
 pnpm test:e2e       # Run E2E tests (requires build)
 pnpm test:all       # Run all tests
-pnpm test:benchmark # Run performance benchmarks
 ```
 
 ## Linting
@@ -54,7 +53,6 @@ test/
   unit/                - Unit tests
   component/           - React component tests
   e2e/                 - Playwright E2E tests
-  benchmark/           - Performance benchmarks
 ```
 
 ## Flow

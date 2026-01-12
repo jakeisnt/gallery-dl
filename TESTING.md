@@ -11,7 +11,6 @@ The extension uses a multi-layered testing approach:
 | Unit Tests | Vitest | Test isolated functions and classes |
 | Component Tests | Vitest + Testing Library | Test React components |
 | E2E Tests | Playwright | Test full extension in browser |
-| Benchmarks | Vitest Bench | Performance measurement |
 
 ## Running Tests
 
@@ -39,9 +38,6 @@ pnpm test:e2e:headed
 
 # Run all tests (unit + E2E)
 pnpm test:all
-
-# Run performance benchmarks
-pnpm test:benchmark
 ```
 
 ## Test Structure
@@ -56,11 +52,9 @@ test/
 │   └── background.test.ts      # Background worker tests
 ├── component/
 │   └── App.test.tsx            # Popup component tests
-├── e2e/
-│   ├── fixtures.ts             # Playwright fixtures
-│   └── extension.spec.ts       # E2E extension tests
-└── benchmark/
-    └── arena-client.bench.ts   # Performance benchmarks
+└── e2e/
+    ├── fixtures.ts             # Playwright fixtures
+    └── extension.spec.ts       # E2E extension tests
 ```
 
 ## Unit Tests
@@ -154,18 +148,6 @@ The project enforces minimum coverage thresholds:
 
 View coverage report: `pnpm test:coverage` (opens in `coverage/` folder)
 
-## Benchmarks
-
-Performance benchmarks measure critical operations:
-
-- URL validation speed
-- Slug validation speed
-- Error message parsing
-- Channel data mapping
-- Debounce function performance
-
-Run benchmarks: `pnpm test:benchmark`
-
 ## CI Integration
 
 Tests run automatically on:
@@ -173,8 +155,8 @@ Tests run automatically on:
 - Pull requests to `main`
 
 CI Pipeline:
-1. Lint & Type Check (parallel)
-2. Unit & Component Tests (parallel)
+1. Type Check
+2. Unit & Component Tests
 3. Build Extension
 4. E2E Tests
 

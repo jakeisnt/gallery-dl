@@ -526,11 +526,12 @@ describe('App Component', () => {
     it('should have proper ARIA labels', async () => {
       render(<App />);
 
+      // Wait for loading to complete and search to appear
       await waitFor(() => {
-        expect(screen.getByRole('main')).toBeInTheDocument();
+        expect(screen.getByRole('search')).toBeInTheDocument();
       });
 
-      expect(screen.getByRole('search')).toBeInTheDocument();
+      expect(screen.getByRole('main')).toBeInTheDocument();
       expect(screen.getByRole('list', { name: /channels/i })).toBeInTheDocument();
     });
 
